@@ -1,0 +1,18 @@
+# 运行与依赖（体积大，用户 npm install 或发 Release 包）
+node_modules/
+runtime/
+
+# 运行产物与隐私
+logs/
+auth-cache/
+*.zip
+
+# 实际配置（含账号/服务器信息，仅保留 example 模板）
+config/accounts.config.js
+config/accounts.config.panel.json
+config/local-offline.config.js
+config/local-offline.config.panel.json
+
+# 本地研究材料
+_research/
+.claude/

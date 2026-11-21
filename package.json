@@ -1,0 +1,18 @@
+{
+  "name": "zenox-mineflayer-bot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "多账号正版挂机机器人（Mineflayer）- M1 最小可用版",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "node src/main.js",
+    "check": "node --check src/main.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "mineflayer": "^4.34.0",
+    "mineflayer-pathfinder": "^2.4.5"
+  }
+}

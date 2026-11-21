@@ -1,0 +1,213 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mineflayer 多账号挂机机器人 · 架构蓝图</title>
+<style>
+  :root{
+    --accent:#8BC8EA; --accent-deep:#3E7FA8;
+    --text:#1A1B1C; --sub:#6B7280; --bg:#F4F3EE; --card:#FFFFFF; --border:#E4E3DD;
+    --green:#52C41A; --amber:#FAAD14; --red:#EA6668;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:'Microsoft YaHei','PingFang SC','Segoe UI',Arial,sans-serif;
+    font-size:14px;line-height:1.6;padding:24px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:24px;margin:0 0 4px;}
+  h2{font-size:17px;margin:32px 0 12px;padding-left:10px;border-left:4px solid var(--accent-deep);}
+  .lead{color:var(--sub);margin:0 0 8px;}
+  .meta{color:var(--sub);font-size:12px;margin-bottom:8px;}
+  .layer{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin:0;}
+  .layer + .arrow{text-align:center;color:var(--accent-deep);font-size:20px;font-weight:700;margin:2px 0;}
+  .layer-title{font-weight:700;font-size:13px;color:var(--accent-deep);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .tag{font-weight:400;font-size:11px;color:var(--sub);background:var(--bg);border:1px solid var(--border);border-radius:999px;padding:1px 8px;}
+  .grid{display:flex;flex-wrap:wrap;gap:8px;}
+  .mod{flex:1 1 130px;min-width:0;background:linear-gradient(135deg,rgba(139,200,234,.14),rgba(139,200,234,.28));
+    border:1px solid rgba(62,127,168,.18);border-radius:10px;padding:8px 10px;}
+  .mod b{display:block;font-size:13px;}
+  .mod span{font-size:11.5px;color:var(--sub);}
+  .mod.core{background:linear-gradient(135deg,rgba(82,196,26,.10),rgba(82,196,26,.20));border-color:rgba(82,196,26,.25);}
+  .mod.warn{background:linear-gradient(135deg,rgba(250,173,20,.12),rgba(250,173,20,.24));border-color:rgba(250,173,20,.3);}
+  .cols{display:flex;flex-wrap:wrap;gap:12px;}
+  .panel{flex:1 1 300px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;}
+  .panel h3{margin:0 0 10px;font-size:14px;}
+  .flow{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:8px 0;}
+  .step{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12.5px;white-space:nowrap;}
+  .step.hl{background:rgba(139,200,234,.3);border-color:rgba(62,127,168,.3);font-weight:600;}
+  .step.ok{background:rgba(82,196,26,.14);border-color:rgba(82,196,26,.3);}
+  .step.no{background:rgba(234,102,104,.13);border-color:rgba(234,102,104,.3);}
+  .ar{color:var(--accent-deep);font-weight:700;}
+  .note{font-size:12px;color:var(--sub);margin:6px 0 0;}
+  .road{display:flex;flex-wrap:wrap;gap:10px;}
+  .ms{flex:1 1 200px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;position:relative;}
+  .ms .ph{font-size:11px;font-weight:700;color:#fff;background:var(--accent-deep);border-radius:999px;padding:2px 10px;display:inline-block;}
+  .ms b{display:block;margin:8px 0 4px;font-size:13.5px;}
+  .ms ul{margin:0;padding-left:18px;font-size:12px;color:var(--sub);}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--sub);margin-top:10px;}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;}
+  .ctxbox{border:1.5px dashed rgba(62,127,168,.5);border-radius:12px;padding:10px;margin-top:10px;background:rgba(139,200,234,.06);}
+  .ctxbox .cap{font-size:12px;color:var(--accent-deep);font-weight:700;margin-bottom:8px;}
+  footer{margin-top:36px;color:var(--sub);font-size:12px;border-top:1px solid var(--border);padding-top:12px;}
+  @media (max-width:600px){ body{padding:14px;} .mod{flex:1 1 100%;} .ms{flex:1 1 100%;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Mineflayer 多账号挂机机器人 · 架构蓝图</h1>
+  <p class="lead">零构建 · 配置即多账号 · 行为确定性 · 自动登录/防AFK/防刷屏/自动存取/退避重连</p>
+  <p class="meta">v1.0 待确认稿 · 2026-09-27 · 配套《01-同类项目调研报告》《02-项目方案设计》</p>
+
+  <h2>一、分层架构</h2>
+
+  <div class="layer">
+    <div class="layer-title">入口层 <span class="tag">src/main.js</span></div>
+    <div class="grid">
+      <div class="mod"><b>配置加载与校验</b><span>字段缺失/错误即中文报错</span></div>
+      <div class="mod"><b>启动 BotManager</b><span>传入账号与服务器配置</span></div>
+      <div class="mod"><b>进程信号处理</b><span>Ctrl+C 先 quit 再退出</span></div>
+    </div>
+  </div>
+  <div class="arrow">▼</div>
+
+  <div class="layer">
+    <div class="layer-title">编排层 <span class="tag">core/BotManager.js</span></div>
+    <div class="grid">
+      <div class="mod"><b>多账号生命周期</b><span>启停/重启/状态汇总</span></div>
+      <div class="mod"><b>错峰启动</b><span>账号间隔 3~10s 进服</span></div>
+      <div class="mod core"><b>故障隔离</b><span>单账号异常不影响其他</span></div>
+    </div>
+  </div>
+  <div class="arrow">▼ 每个账号一个</div>
+
+  <div class="layer">
+    <div class="layer-title">容器层 <span class="tag">core/BotContext.js</span><span class="tag">TaskRunner</span><span class="tag">ReconnectPolicy</span></div>
+    <div class="grid">
+      <div class="mod"><b>插件/事件装配</b><span>pathfinder 等按需加载</span></div>
+      <div class="mod warn"><b>cleanup 注册表</b><span>定时器/监听器统一注销</span></div>
+      <div class="mod"><b>TaskRunner</b><span>动作串行·超时·中断·循环检测</span></div>
+      <div class="mod"><b>ReconnectPolicy</b><span>指数退避+抖动+维护识别</span></div>
+    </div>
+    <div class="ctxbox">
+      <div class="cap">单 BotContext 内部装配（随账号配置实例化）</div>
+      <div class="grid">
+        <div class="mod"><b>ChatQueue</b><span>聊天/命令限流去重</span></div>
+        <div class="mod"><b>WarpQueue</b><span>传送一次一个·等到达</span></div>
+        <div class="mod"><b>ChestManager</b><span>箱子/木桶存取规则</span></div>
+        <div class="mod"><b>Whitelist</b><span>主人/好友/黑名单</span></div>
+        <div class="mod"><b>ChatLogger</b><span>全量+私聊按天落盘</span></div>
+        <div class="mod"><b>antiAfk / autoAuth / autoEat</b><span>挂机行为三件套</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="arrow">▼ Mineflayer 官方生态（不重造）</div>
+
+  <div class="layer">
+    <div class="layer-title">地基 <span class="tag">PrismarineJS</span></div>
+    <div class="grid">
+      <div class="mod"><b>mineflayer ^4</b><span>高级机器人 API</span></div>
+      <div class="mod"><b>pathfinder</b><span>A* 寻路</span></div>
+      <div class="mod"><b>minecraft-protocol / data</b><span>协议·认证·版本数据</span></div>
+      <div class="mod"><b>prismarine-physics / windows</b><span>物理·容器窗口</span></div>
+    </div>
+  </div>
+
+  <h2>二、三大可靠性机制</h2>
+  <div class="cols">
+    <div class="panel">
+      <h3>① 资源生命周期（根治泄漏）</h3>
+      <div class="flow">
+        <span class="step">创建定时器/监听</span><span class="ar">→</span>
+        <span class="step hl">registerCleanup 登记</span>
+      </div>
+      <div class="flow">
+        <span class="step">断线/重连</span><span class="ar">→</span>
+        <span class="step no">destroy() 逆序清理</span><span class="ar">→</span>
+        <span class="step ok">新建 bot，零残留</span>
+      </div>
+      <p class="note">针对 Afk-Bot 定时器泄漏、TrafficerMC 监听器泄漏。</p>
+    </div>
+
+    <div class="panel">
+      <h3>② 聊天 / 传送全排队（防刷屏）</h3>
+      <div class="flow">
+        <span class="step">行为模块产生消息</span><span class="ar">→</span>
+        <span class="step hl">入 ChatQueue</span>
+      </div>
+      <div class="flow">
+        <span class="step">令牌桶 1.5s/条</span><span class="ar">→</span>
+        <span class="step">去重/优先级</span><span class="ar">→</span>
+        <span class="step ok">发出</span>
+      </div>
+      <div class="flow">
+        <span class="step">传送指令</span><span class="ar">→</span>
+        <span class="step hl">WarpQueue 在途锁定</span><span class="ar">→</span>
+        <span class="step">等到达/超时</span><span class="ar">→</span>
+        <span class="step ok">放行下一条</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>③ 指数退避重连（防重连风暴）</h3>
+      <div class="flow">
+        <span class="step">断线</span><span class="ar">→</span>
+        <span class="step hl">2s·4s·8s…封顶5min</span><span class="ar">+</span>
+        <span class="step">±20% 抖动</span>
+      </div>
+      <div class="flow">
+        <span class="step no">识别"白名单/封禁"</span><span class="ar">→</span>
+        <span class="step">停止并告警</span>
+      </div>
+      <div class="flow">
+        <span class="step">识别"维护重启"</span><span class="ar">→</span>
+        <span class="step">长冷却等待</span>
+      </div>
+      <p class="note">连续失败 10 次进入 30 分钟冷却后继续，重连成功计数清零。</p>
+    </div>
+  </div>
+
+  <h2>三、运行时数据流</h2>
+  <div class="layer">
+    <div class="flow" style="justify-content:center;">
+      <span class="step hl">config/accounts.config.js</span><span class="ar">→</span>
+      <span class="step">main.js</span><span class="ar">→</span>
+      <span class="step">BotManager</span><span class="ar">→</span>
+      <span class="step">BotContext × N</span><span class="ar">→</span>
+      <span class="step ok">mc.example.com</span>
+    </div>
+    <div class="flow" style="justify-content:center;">
+      <span class="step">服务器聊天/私聊/菜单</span><span class="ar">→</span>
+      <span class="step">事件分发</span><span class="ar">→</span>
+      <span class="step">Whitelist 鉴权</span><span class="ar">→</span>
+      <span class="step">TaskRunner 执行</span><span class="ar">→</span>
+      <span class="step">ChatQueue 回复</span><span class="ar">＋</span>
+      <span class="step">ChatLogger 落盘</span>
+    </div>
+    <div class="legend">
+      <span><i class="dot" style="background:#8BC8EA;"></i>主流程模块</span>
+      <span><i class="dot" style="background:#52C41A;"></i>成功/隔离机制</span>
+      <span><i class="dot" style="background:#FAAD14;"></i>注册/锁定机制</span>
+      <span><i class="dot" style="background:#EA6668;"></i>拦截/停止路径</span>
+    </div>
+  </div>
+
+  <h2>四、交付路线图</h2>
+  <div class="road">
+    <div class="ms"><span class="ph">M1</span><b>最小可用</b>
+      <ul><li>骨架+配置校验</li><li>多账号错峰上线</li><li>autoAuth / antiAfk</li><li>日志+优雅退出</li></ul></div>
+    <div class="ms"><span class="ph">M2</span><b>稳定挂机</b>
+      <ul><li>指数退避重连</li><li>ChatQueue 限流</li><li>autoEat / 死亡回家</li><li>状态指令</li></ul></div>
+    <div class="ms"><span class="ph">M3</span><b>核心特色</b>
+      <ul><li>WarpQueue 传送队列</li><li>ChestManager 自动存取</li><li>Whitelist 权限</li><li>完整聊天指令</li></ul></div>
+    <div class="ms"><span class="ph">M4</span><b>可选增强</b>
+      <ul><li>只读 Web 监控→面板</li><li>消息推送</li><li>插件热加载</li><li>多 bot 协作</li></ul></div>
+  </div>
+
+  <footer>
+    本图为方案设计示意，所有模块职责以《02-项目方案设计.md》为准；确认方案后从 M1 开始开发，每个里程碑交付可运行版本并实测验证。
+    合规：仅用于自有/授权账号，不做刷屏轰炸、不绕过封禁。
+  </footer>
+</div>
+</body>
+</html>
